@@ -31,35 +31,37 @@ class _ConsistentContactState extends State<ConsistentContact> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(actions: [
-        IconButton(
-          icon: Icon(Icons.add),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AddContact()),
-            );
-          },
-        )
-      ], title: Text('Constant Contact')),
-      body: _body());
+  Widget build(BuildContext context) =>
+      Scaffold(appBar: AppBar(title: Text('Constant Contact')), body: _body());
 
   Widget _body() {
     if (_permissionDenied) return Center(child: Text('Permission denied'));
     if (_contacts == null) return Center(child: CircularProgressIndicator());
-    return ListView.builder(
-        itemCount: _contacts!.length,
-        itemBuilder: (context, i) => ListTile(
-            trailing: Icon(Icons.add_circle_outline_outlined),
-            title: Text(_contacts![i].displayName),
-            onTap: () async {
-              final fullContact =
-                  await FlutterContacts.getContact(_contacts![i].id);
+    return Consumer(builder: (context, ref, child) {
+      final contactList = ref.watch(contactListProvider);
+      final contactListNotifier = ref.watch(contactListProvider.notifier);
+      return ListView.builder(
+          itemCount: _contacts!.length,
+          itemBuilder: (context, i) => ListTile(
+              trailing: IconButton(
+                  icon: Icon(Icons.add_circle_outline_outlined),
+                  onPressed: () {
+                    setState(() {
+                      //i think something wrong with this here. data not loaded
+                      //into contact object correctly causing null errors
+                      contactListNotifier.addContact(_contacts![i]);
+                      _contacts?.removeAt(i);
+                    });
+                  }),
+              title: Text(_contacts![i].displayName),
+              onTap: () async {
+                final fullContact =
+                    await FlutterContacts.getContact(_contacts![i].id);
 
-              // await Navigator.of(context).push(
-              //     MaterialPageRoute(builder: (_) => ContactPage(fullContact!)));
-            }));
+                await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ContactPage(fullContact!)));
+              }));
+    });
   }
 }
 
@@ -72,12 +74,33 @@ class ContactPage extends StatelessWidget {
       appBar: AppBar(title: Text(contact.displayName)),
       body: Center(
         child: Column(children: [
-          Text('First name: ${contact.name.first}'),
-          Text('Last name: ${contact.name.last}'),
+          SizedBox(
+            height: 50,
+          ),
           Text(
-              'Phone number: ${contact.phones.isNotEmpty ? contact.phones.first.number : '(none)'}'),
+            'First name: ${contact.name.first}',
+            style: TextStyle(fontSize: 18),
+          ),
+          SizedBox(
+            height: 10,
+          ),
+          Text('Last name: ${contact.name.last}',
+              style: TextStyle(fontSize: 18)),
+          SizedBox(
+            height: 10,
+          ),
           Text(
-              'Email address: ${contact.emails.isNotEmpty ? contact.emails.first.address : '(none)'}'),
+              'Phone number: ${contact.phones.isNotEmpty ? contact.phones.first.number : '(none)'}',
+              style: TextStyle(fontSize: 18)),
+          SizedBox(
+            height: 10,
+          ),
+          Text(
+              'Email address: ${contact.emails.isNotEmpty ? contact.emails.first.address : '(none)'}',
+              style: TextStyle(fontSize: 18)),
+          SizedBox(
+            height: 10,
+          ),
         ]),
       ));
 }
@@ -231,8 +254,11 @@ class PageOne extends StatelessWidget {
             return ListView(
               children: contactList
                   .map((contact) => ListTile(
-                        title: Text(contact.name.first),
-                        subtitle: Text(contact.phones.first.number),
+                        title: Text(
+                          contact.name.first,
+                          style: TextStyle(color: Colors.black),
+                        ),
+                        //subtitle: Text(contact.phones.first.number),
                         trailing: Icon(Icons.call),
                       ))
                   .toList(),
